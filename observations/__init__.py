@@ -28,7 +28,18 @@ class Image:
         self.width = int(str(tags.get('EXIF ExifImageWidth','0')))
         self.height = int(str(tags.get('EXIF ExifImageLength','0')))
         # fix this for Madeleine's camera IDs
-        self.camera = str(tags.get('Image Software'))
+        usercomment = str(tags.get('EXIF UserComment'))
+        parts = usercomment.split(',')
+        if '\\' in self.path:
+            # for PCs
+            camera_id = self.path.split('\\')[-1]
+        else:
+            # for Linux and Mac
+            camera_id = self.path.split('/')[-1]
+        for part in parts:
+            if 'ID=' in part:
+                camera_id=part.replace('ID=','').strip()
+        self.camera = camera_id
         
     def show(self, canvas):
         canvas.clear()

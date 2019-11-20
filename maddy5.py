@@ -57,9 +57,8 @@ def pick_directory():
     if user_selected:
         folder_selected = user_selected
         messagebox.showinfo("Information","You picked: {}".format(folder_selected))
-        annotations_filename = os.path.join(folder_selected, 'annotations.csv')
         # load observations if these exist
-        observations = Observations(annotations_filename)
+        observations = Observations(filename=annotations_filename, path=folder_selected)
     else:
         info("Information", "You cancelled folder selection")
         
@@ -156,6 +155,9 @@ def get_image_filenames(imagepath):
     image_files = []
     valid_extensions = ['jpg','jpeg','png']
     for fn in os.listdir(imagepath):
+        if fn[0]=='.':
+            # skip Mac thumbs
+            continue
         parts = fn.split('.')
         for ext in valid_extensions:
             if parts[-1].lower() == ext:
