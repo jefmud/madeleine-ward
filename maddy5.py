@@ -2,17 +2,23 @@
 # Version 5, Beta
 # Madeleine Ward's species marker program
 
+import tkinter
 # GUIZero is a simplified wrapper on Tkinter
 from guizero import (App, Text, Picture,
                      MenuBar, TextBox, Window,
                      PushButton, warn, info, askstring,
                      Drawing)
+
 import os
 
 from observations import Observations, Observation, Image
 
 IMAGE_WIDTH = 1024
 IMAGE_HEIGHT = 768
+RIGHT_ARROW = 38
+RIGHT_ARROW_OSX = 8189699
+LEFT_ARROW = 39
+LEFT_ARROW_OSX = 8124162
 
 # note we can import Tkinter widget
 from tkinter import filedialog, messagebox, simpledialog
@@ -35,14 +41,13 @@ def keypress_hook(event_data):
     # it is not state aware yet, I will want to change that later.
     global file_pointer
     keycode = event_data._tk_event.keycode
-    GLOB_KEYCODE = keycode
     if DEBUG: print('keypressed:', keycode, '=', event_data.key)
-    if keycode == 39:
+    if keycode == RIGHT_ARROW or keycode == RIGHT_ARROW_OSX:
         # RIGHT arrow
         observations.save()
         file_pointer += 1
         file_pointer = show_file(file_pointer)
-    if keycode == 37:
+    if keycode == LEFT_ARROW or keycode == LEFT_ARROW_OSX:
         # LEFT arrow
         observations.save()
         file_pointer -= 1
@@ -68,16 +73,13 @@ def file_function():
     if DEBUG: print("File function selected.")
     messagebox.showinfo("File Function", "File function selected!")
 
-def canvas_right_click(event_data):
-    """canvas_right_click event handler
-    action - the canvas right-click event will reset NEAREST
-    observation mark
+
+def attempt_remove_mark(x,y):
+    """attempt to remove a mark at x,y if it exists
+    return True if an image was found
+    return False if nothing was nearby
     """
     global canvas, observations, current_image
-    # click data
-    x = event_data._tk_event.x
-    y = event_data._tk_event.y
-    
     found_index = observations.find_by_filename_location(current_image.fname, x, y)
     if found_index >= 0:
         # found the observation!
@@ -90,9 +92,20 @@ def canvas_right_click(event_data):
             observations.remove_at_index(found_index)
             current_image.show(canvas)
             observations.show_markers_by_filename(canvas, current_image.fname)
+        return True
+    else:
+        return False
     
     
-    
+def canvas_right_click(event_data):
+    """canvas_right_click event handler
+action - the canvas right-click event will reset NEAREST
+observation mark
+"""
+    # click data
+    x = event_data._tk_event.x
+    y = event_data._tk_event.y
+    attempt_remove_mark(x,y)   
     
 def canvas_left_click(event_data):
     """canvas_left_click event handler
@@ -103,7 +116,12 @@ def canvas_left_click(event_data):
     size = 10
     x = event_data._tk_event.x
     y = event_data._tk_event.y
-    
+
+    # attempt to remove the mark is NEAR to an existing mark
+    if attempt_remove_mark(x,y):
+        # just exit if this returns True
+        return None
+
     # make a temporary mark
     mark_id = canvas.oval(x-size,y,x+size,y+size,color="red")
     canvas.show()
@@ -176,7 +194,7 @@ def mark_function():
         files = get_image_filenames(folder_selected)
                 
         if len(files) == 0:
-            warn("Error", "This folder contains no image files")
+            warn("Error", "This folder contains no image files.\nPick another folder.")
         else:
             file_pointer = 0
             # get observations!
@@ -185,7 +203,20 @@ def mark_function():
             
     except Exception as e:
         warn("Exception thrown", "Invalid folder.  Please select valid folder.")
-    
+
+def show_help():
+    msg = """1. To select a Directory choose File->Pick Directory menu.
+
+2. To begin marking up images choose Mark Images menu
+
+RIGHT KEYBOARD ARROW moves to next picture in the directory.
+
+LEFT KEYBOARD ARROW moves back one picture in the directory.
+
+LEFT MOUSE CLICK allows marking the species location.
+LEFT MOUSE CLICK on existing mark allows you to EDIT the mark.
+"""
+    info("Welcome", msg)
 
 # declare our main app    
 app = App(
@@ -203,13 +234,15 @@ canvas.when_right_button_pressed = canvas_right_click
 
 # define the menu bar
 menubar = MenuBar(app,
-                  toplevel=["File", "Mark Images"],
+                  toplevel=["File", "Mark Images","Help"],
                   options=[
                       [ ["Pick Directory", pick_directory] ],
-                      [ ["Mark Images", mark_function]]
+                      [ ["Mark Images", mark_function]],
+                      [ ["Help", show_help]]
                   ])
 
 # hook the arrow keys (for now, might want to change this to local hook if permitted)
 app.when_key_pressed = keypress_hook
+show_help()
 
 app.display()
